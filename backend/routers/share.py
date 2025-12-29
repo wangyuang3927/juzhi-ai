@@ -1,8 +1,8 @@
 """
-FocusAI Share API Router
+聚智AI Share API Router
 分享功能 + 邀请码系统
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -89,9 +89,17 @@ def generate_invite_code(user_id: str) -> str:
 # ============================================
 
 @router.get("/daily/{date}")
-async def get_daily_share(date: str, invite_code: Optional[str] = None):
+async def get_daily_share(
+    date: str, 
+    invite_code: Optional[str] = None, 
+    user_id: Optional[str] = None,
+    content_type: Optional[str] = Query(None, alias="type")  # general 或 personal
+):
     """
     获取某日的分享内容（公开访问）
+    - content_type: general=今日AI简报, personal=专属AI简报
+    - 如果提供 user_id，优先获取该用户生成的新闻
+    - 否则获取全局新闻
     """
     # 记录查看统计
     stats = load_share_stats()
@@ -109,28 +117,65 @@ async def get_daily_share(date: str, invite_code: Optional[str] = None):
             codes[invite_code]["used_count"] = codes[invite_code].get("used_count", 0) + 1
             save_invite_codes(codes)
     
-    # 获取当日新闻
-    all_insights = await storage.get_insights(limit=100, offset=0)
-    daily_items = [item for item in all_insights if item.get("timestamp", "").startswith(date)]
-    
-    # 简化数据，只返回必要字段
     public_items = []
-    for item in daily_items[:10]:  # 最多10条
-        public_items.append({
-            "id": item.get("id"),
-            "title": item.get("title"),
-            "summary": item.get("summary"),
-            "tags": item.get("tags", []),
-            "timestamp": item.get("timestamp"),
-        })
+    profession = ""
+    share_title = "今日 AI 热点精选"  # 默认标题
+    
+    # 优先获取用户特定的新闻
+    if user_id:
+        # 根据类型选择不同的目录
+        if content_type == "general":
+            user_news_dir = DATA_DIR / "general_news"
+            share_title = "今日 AI 简报"
+        else:
+            user_news_dir = DATA_DIR / "user_news"
+            share_title = "专属 AI 简报"
+        
+        user_news_file = user_news_dir / f"{user_id}_{date}.json"
+        print(f"🔍 [Share] 查找用户新闻: {user_news_file}, 存在: {user_news_file.exists()}")
+        
+        if user_news_file.exists():
+            try:
+                with open(user_news_file, 'r', encoding='utf-8') as f:
+                    user_data = json.load(f)
+                    profession = user_data.get("profession", "")
+                    for item in user_data.get("items", [])[:10]:
+                        public_items.append({
+                            "id": item.get("id"),
+                            "title": item.get("title"),
+                            "summary": item.get("summary"),
+                            "tags": item.get("tags", []),
+                            "timestamp": item.get("timestamp"),
+                            "impact": item.get("impact", ""),
+                            "url": item.get("url", ""),  # 添加原文链接
+                        })
+            except Exception as e:
+                print(f"加载用户新闻失败: {e}")
+    
+    # 如果没有用户新闻，获取全局新闻
+    if not public_items:
+        all_insights = await storage.get_insights(limit=100, offset=0)
+        daily_items = [item for item in all_insights if item.get("timestamp", "").startswith(date)]
+        
+        for item in daily_items[:10]:
+            public_items.append({
+                "id": item.get("id"),
+                "title": item.get("title"),
+                "summary": item.get("summary"),
+                "tags": item.get("tags", []),
+                "timestamp": item.get("timestamp"),
+            })
     
     return {
         "date": date,
         "items": public_items,
         "item_count": len(public_items),
+        "profession": profession,
+        "share_title": share_title,  # 分享页面标题
+        "content_type": content_type or "personal",
         "cta": {
             "title": "想要更个性化的 AI 资讯？",
-            "description": "注册 FocusAI，获取为你定制的 AI 行业洞察",
+            "description": "注册聚智AI，获取为你定制的 AI 行业洞察",
             "button_text": "免费注册",
             "invite_code": invite_code
         }

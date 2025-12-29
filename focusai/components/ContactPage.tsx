@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, MapPin, Loader2 } from 'lucide-react';
+import { Mail, MapPin, Loader2, MessageCircle } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
 const ContactPage: React.FC = () => {
@@ -66,6 +66,26 @@ const ContactPage: React.FC = () => {
                 <MapPin size={18} />
               </div>
               <span>中国 · 郑州</span>
+            </div>
+          </div>
+
+          {/* WeChat Official Account QR Code */}
+          <div className="pt-6 border-t border-white/5">
+            <div className="flex items-center gap-3 mb-4 text-white">
+              <MessageCircle size={20} className="text-green-400" />
+              <span className="font-bold">关注公众号</span>
+            </div>
+            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 w-fit">
+              <div className="bg-white p-2 rounded-xl">
+                <img 
+                  src="/qrcode_for_gh_fdd5427defa4_258.jpg" 
+                  alt="微信公众号二维码" 
+                  className="w-32 h-32 object-contain"
+                />
+              </div>
+              <p className="mt-3 text-xs text-neutral-500 text-center">
+                扫码关注“聚智 AI”<br />获取每日精华推送
+              </p>
             </div>
           </div>
         </div>

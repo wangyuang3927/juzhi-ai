@@ -1,0 +1,119 @@
+{
+  "user_id": "user_odwwqaath4r",
+  "date": "2025-12-08",
+  "items": [
+    {
+      "id": "general-3fecf4c4",
+      "title": "字节跳动豆包大模型市场份额达46.4%",
+      "tags": [
+        "#字节跳动",
+        "#大模型",
+        "#市场份额"
+      ],
+      "summary": "2025年12月，字节跳动豆包大模型在中国公有云服务调用量市场份额高达46.4%，超越阿里云和百度智能云总和，成为中国最受欢迎的AI产品之一。",
+      "impact": "显示字节跳动在AI领域的快速崛起，可能改变国内云计算和AI服务市场格局。",
+      "prompt": "尝试使用豆包大模型进行内容创作，体验其个性化推荐功能。",
+      "url": "https://zhuanlan.zhihu.com/p/1931087401045975892",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-192e34e2",
+      "title": "DeepSeek-R1训练成本仅600万美元",
+      "tags": [
+        "#DeepSeek",
+        "#AI训练",
+        "#成本优化"
+      ],
+      "summary": "2025年11月，深度求索DeepSeek-R1的训练成本仅为600万美元，远低于GPT的数亿美元，采用FP8、MLA和MoE等技术降低资源消耗。",
+      "impact": "大幅降低AI模型训练门槛，可能加速AI技术的普及和应用创新。",
+      "prompt": "在GitHub上探索DeepSeek开源项目，了解其高效训练技术。",
+      "url": "https://www.zhihu.com/tardis/bd/ans/127972796205",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-b8164f66",
+      "title": "通义千问推出超级智能体",
+      "tags": [
+        "#阿里巴巴",
+        "#多模态",
+        "#电商AI"
+      ],
+      "summary": "2025年3月，阿里通义千问推出'超级智能体'，深度整合电商数据，在政务和医疗领域已有成功应用案例。",
+      "impact": "展示AI在企业服务中的实际价值，特别是对电商和政务场景的深度优化。",
+      "prompt": "通过阿里云体验通义千问的电商数据整合能力。",
+      "url": "https://blog.csdn.net/EnjoyEDU/article/details/148221701",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-ebbc5490",
+      "title": "光子AI芯片降低能耗90%",
+      "tags": [
+        "#光子计算",
+        "#AI芯片",
+        "#能源效率"
+      ],
+      "summary": "2025年10月，意大利研究团队发表Nature论文，证实光子AI芯片可降低能耗90%，实现边缘设备实时AI处理。",
+      "impact": "可能彻底改变AI硬件架构，解决当前AI高能耗问题。",
+      "prompt": "关注光子计算领域投资机会，了解相关上市公司。",
+      "url": "https://medium.com/@exploringtechnology123/the-6-ai-breakthroughs-that-changed-everything-in-october-2025-a0958e088eb7",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-dee85a45",
+      "title": "多模态AI实现无缝整合",
+      "tags": [
+        "#多模态",
+        "#AI突破",
+        "#跨模态"
+      ],
+      "summary": "2025年AI重大突破之一是多模态模型实现文本、图像、音频无缝整合，改变内容创作方式。",
+      "impact": "使AI创作更加自然流畅，可能重塑媒体和娱乐产业。",
+      "prompt": "尝试使用最新多模态工具创作跨媒体内容。",
+      "url": "https://medium.com/towards-artificial-intelligence/2025s-biggest-ai-shocks-4-breakthroughs-that-changed-everything-992751b975a7",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-14fea7d1",
+      "title": "腾讯混元集成DeepSeek技术",
+      "tags": [
+        "#腾讯",
+        "#大模型",
+        "#技术整合"
+      ],
+      "summary": "2025年腾讯混元模型集成DeepSeek-R1技术提升分析能力，但用户反馈其表达过于官方化。",
+      "impact": "显示国内大模型厂商开始技术整合，可能加速产品迭代。",
+      "prompt": "对比体验腾讯元宝和DeepSeek的分析能力差异。",
+      "url": "https://zhuanlan.zhihu.com/p/1905928615469781061",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-1ed88100",
+      "title": "AI推理模型突破思维链技术",
+      "tags": [
+        "#推理AI",
+        "#思维链",
+        "#逻辑推理"
+      ],
+      "summary": "2025年，DeepSeek-R1等模型通过强化学习实现真正的分步推理能力，在数学和编程测试中表现优异。",
+      "impact": "使AI具备更接近人类的逻辑思维能力，可能改变教育和科研方式。",
+      "prompt": "使用推理模型解决复杂数学问题，观察其思维过程。",
+      "url": "https://medium.com/developers-journal/year-in-review-the-most-important-ai-breakthroughs-of-2025-fd8e43829f7a",
+      "timestamp": "2025-12-08"
+    },
+    {
+      "id": "general-f5645f31",
+      "title": "AI能否打破150年经济增长规律",
+      "tags": [
+        "#AI经济",
+        "#生产力",
+        "#长期趋势"
+      ],
+      "summary": "2025年12月，经济学家讨论AI是否能够打破美国150年来人均GDP2%的增长上限，带来生产力革命。",
+      "impact": "关乎AI对全球经济的长远影响，决定投资方向和职业选择。",
+      "prompt": "研究AI对不同行业生产力提升的具体案例和数据。",
+      "url": "https://www.reuters.com/markets/europe/can-ai-break-150-year-trend-without-overheating-economy-2025-12-04/",
+      "timestamp": "2025-12-08"
+    }
+  ],
+  "created_at": "2025-12-08T13:07:30.182575"
+}

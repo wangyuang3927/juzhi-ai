@@ -15,9 +15,10 @@ const plans = [
     period: '',
     desc: '适合刚开始探索 AI 的个人用户',
     features: [
-      '每日精选 10 条今日 AI 简报',
-      '每日 5 条专属工具推荐',
-      '每日 5 条行业实战案例'
+      '每日 10 条今日 AI 简报（通用）',
+      '每日 10 条专属 AI 简报（个性化）',
+      '每日 6 条专属工具推荐',
+      '每日 6 条行业实战案例'
     ],
     cta: '免费开始',
     primary: false,
@@ -29,6 +30,7 @@ const plans = [
     desc: '为追求效率的职场精英打造',
     features: [
       '无限量今日 AI 简报',
+      '无限量专属 AI 简报（个性化）',
       '无限量专属工具推荐',
       '无限量行业实战案例',
       '微信服务号推送每日简报（开发中）'
@@ -85,11 +87,26 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate, user }) => {
         <h2 className="text-4xl font-bold text-white mb-4">
           投资你的未来
         </h2>
-        <p className="text-lg text-neutral-400">
-          选择最适合你的成长计划，随时取消。
-        </p>
+        <div className="mt-12 p-12 rounded-3xl bg-[#0F0F16]/80 border border-blue-500/30 backdrop-blur-md shadow-[0_0_50px_rgba(59,130,246,0.1)]">
+          <p className="text-2xl font-bold text-blue-400 mb-4">
+            🚀 网站试运营期间，暂时免费
+          </p>
+          <p className="text-lg text-neutral-400">
+            现在注册即可享受所有专业版功能。我们致力于为您提供最优质的 AI 资讯服务。
+          </p>
+          {!user && (
+            <button 
+              onClick={() => onNavigate?.(ViewState.REGISTER)}
+              className="mt-8 px-8 py-3 bg-white text-black rounded-xl font-bold hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              立即注册体验
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* 暂时隐藏价格列表 */}
+      {/* 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
         {plans.map((plan, idx) => (
           <div 
@@ -147,6 +164,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate, user }) => {
           </div>
         ))}
       </div>
+      */}
 
       {/* 付款弹窗 */}
       {showPaymentModal && (
@@ -168,6 +186,9 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate, user }) => {
               <h3 className="text-xl font-bold text-white mb-2">升级专业版</h3>
               <p className="text-neutral-400 text-sm">
                 ¥4.9/月 · 解锁全部功能
+              </p>
+              <p className="text-xs text-blue-400 mt-2">
+                💡 目前仅支持支付宝扫码支付
               </p>
             </div>
 

@@ -10,6 +10,7 @@ interface InsightCardProps {
   userProfession: string;
   onToggleBookmark: (id: string) => void;
   onDelete: (id: string) => void;
+  showPersonalization?: boolean;  // 是否显示个性化按钮，默认 true
 }
 
 const InsightCard: React.FC<InsightCardProps> = ({
@@ -18,6 +19,7 @@ const InsightCard: React.FC<InsightCardProps> = ({
   userProfession,
   onToggleBookmark,
   onDelete,
+  showPersonalization = true,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isPersonalizing, setIsPersonalizing] = useState(false);
@@ -148,7 +150,7 @@ const InsightCard: React.FC<InsightCardProps> = ({
                   </>
                 )}
               </div>
-              {!personalizedImpact && (
+              {showPersonalization && !personalizedImpact && (
                 <button
                   onClick={handlePersonalize}
                   disabled={isPersonalizing}

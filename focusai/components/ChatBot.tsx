@@ -125,7 +125,7 @@ const ChatBot: React.FC = () => {
           <div className="px-4 py-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <RobotIcon size={28} isActive={loading} />
-              <span className="font-bold text-white">FocusAI 助手</span>
+              <span className="font-bold text-white">聚智AI 助手</span>
             </div>
             <button 
               onClick={clearHistory}
@@ -147,7 +147,7 @@ const ChatBot: React.FC = () => {
                 <div className="mx-auto mb-3 w-fit">
                   <RobotIcon size={48} />
                 </div>
-                <p className="text-sm text-white">你好！我是 FocusAI 助手</p>
+                <p className="text-sm text-white">你好！我是聚智AI 助手</p>
                 <p className="text-xs mt-1">告诉我你的职业和需求，我来帮你筛选最有价值的 AI 资讯</p>
               </div>
             ) : (

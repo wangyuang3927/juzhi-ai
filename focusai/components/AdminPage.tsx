@@ -3,11 +3,11 @@ import {
   Users, MessageCircle, UserCheck, TrendingUp, 
   Eye, Trash2, Lock, Unlock, ChevronDown, ChevronUp,
   Loader2, AlertCircle, Mail, BarChart3, MousePointer, 
-  FileText, Clock, CheckCircle, Bell, Plus, Edit, Pin
+  FileText, Clock, CheckCircle, Bell, Plus, Edit, Pin, Crown
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
-type AdminTab = 'overview' | 'users' | 'messages' | 'analytics' | 'announcements';
+type AdminTab = 'overview' | 'users' | 'messages' | 'analytics' | 'announcements' | 'premium';
 
 interface Stats {
   total_users: number;
@@ -58,6 +58,12 @@ const AdminPage: React.FC = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  
+  // 专业版用户管理状态
+  const [premiumUsers, setPremiumUsers] = useState<any[]>([]);
+  const [showGrantForm, setShowGrantForm] = useState(false);
+  const [grantForm, setGrantForm] = useState({ email: '', days: 30, source: 'payment' });
+  const [grantLoading, setGrantLoading] = useState(false);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
   const [announcementForm, setAnnouncementForm] = useState({
@@ -79,6 +85,7 @@ const AdminPage: React.FC = () => {
         loadMessages();
         loadAnnouncements();
         loadAnalytics();
+        loadPremiumUsers();
       } else {
         setError('密码错误');
       }
@@ -130,6 +137,60 @@ const AdminPage: React.FC = () => {
       setAnnouncements(data.announcements || []);
     } catch (err) {
       console.error('Failed to load announcements:', err);
+    }
+  };
+
+  // 加载专业版用户
+  const loadPremiumUsers = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/premium/list?password=${password}`);
+      const data = await res.json();
+      setPremiumUsers(data || []);
+    } catch (err) {
+      console.error('Failed to load premium users:', err);
+    }
+  };
+
+  // 开通专业版
+  const grantPremium = async () => {
+    if (!grantForm.email.trim()) return;
+    
+    setGrantLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/premium/grant?password=${password}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(grantForm)
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        alert(data.message);
+        loadPremiumUsers();
+        setShowGrantForm(false);
+        setGrantForm({ email: '', days: 30, source: 'payment' });
+      } else {
+        alert(data.detail || '开通失败');
+      }
+    } catch (err) {
+      console.error('Failed to grant premium:', err);
+      alert('开通失败');
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
+  // 撤销专业版
+  const revokePremium = async (userId: string) => {
+    if (!confirm('确定要撤销该用户的专业版吗？')) return;
+    
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/premium/${encodeURIComponent(userId)}?password=${password}`, {
+        method: 'DELETE'
+      });
+      loadPremiumUsers();
+    } catch (err) {
+      console.error('Failed to revoke premium:', err);
     }
   };
 
@@ -287,6 +348,7 @@ const AdminPage: React.FC = () => {
   const tabs = [
     { id: 'overview' as AdminTab, label: '概览', icon: BarChart3 },
     { id: 'users' as AdminTab, label: '用户', icon: Users },
+    { id: 'premium' as AdminTab, label: '专业版', icon: Crown },
     { id: 'messages' as AdminTab, label: '留言', icon: Mail },
     { id: 'announcements' as AdminTab, label: '公告', icon: Bell },
     { id: 'analytics' as AdminTab, label: '行为分析', icon: MousePointer },
@@ -571,6 +633,187 @@ const AdminPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 专业版用户管理 Tab */}
+      {activeTab === 'premium' && (
+        <div className="space-y-6">
+          {/* 开通专业版按钮 */}
+          <div className="flex justify-between items-center">
+            <div className="text-neutral-400 text-sm">
+              共 <span className="text-amber-400 font-bold">{premiumUsers.filter(u => u.is_active).length}</span> 位有效专业版用户
+            </div>
+            <button
+              onClick={() => setShowGrantForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 rounded-lg text-black font-medium transition-colors"
+            >
+              <Crown size={18} />
+              手动开通专业版
+            </button>
+          </div>
+
+          {/* 开通表单 */}
+          {showGrantForm && (
+            <div className="bg-[#0b0c15] border border-amber-500/30 rounded-2xl p-6">
+              <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+                <Crown className="text-amber-400" size={20} />
+                开通专业版
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm text-neutral-400 mb-1">用户邮箱</label>
+                  <input
+                    type="email"
+                    value={grantForm.email}
+                    onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">开通天数</label>
+                  <select
+                    value={grantForm.days}
+                    onChange={(e) => setGrantForm({ ...grantForm, days: parseInt(e.target.value) })}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white"
+                  >
+                    <option value={7}>7 天</option>
+                    <option value={30}>30 天</option>
+                    <option value={90}>90 天</option>
+                    <option value={180}>180 天</option>
+                    <option value={365}>365 天</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm text-neutral-400 mb-1">来源</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-neutral-300">
+                    <input
+                      type="radio"
+                      name="source"
+                      value="payment"
+                      checked={grantForm.source === 'payment'}
+                      onChange={() => setGrantForm({ ...grantForm, source: 'payment' })}
+                      className="accent-amber-500"
+                    />
+                    付费购买
+                  </label>
+                  <label className="flex items-center gap-2 text-neutral-300">
+                    <input
+                      type="radio"
+                      name="source"
+                      value="gift"
+                      checked={grantForm.source === 'gift'}
+                      onChange={() => setGrantForm({ ...grantForm, source: 'gift' })}
+                      className="accent-amber-500"
+                    />
+                    赠送
+                  </label>
+                  <label className="flex items-center gap-2 text-neutral-300">
+                    <input
+                      type="radio"
+                      name="source"
+                      value="activity"
+                      checked={grantForm.source === 'activity'}
+                      onChange={() => setGrantForm({ ...grantForm, source: 'activity' })}
+                      className="accent-amber-500"
+                    />
+                    活动奖励
+                  </label>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowGrantForm(false)}
+                  className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={grantPremium}
+                  disabled={grantLoading || !grantForm.email.trim()}
+                  className="flex items-center gap-2 px-6 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 rounded-lg text-black font-medium transition-colors"
+                >
+                  {grantLoading ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
+                  确认开通
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 用户列表 */}
+          <div className="bg-[#0b0c15] border border-white/10 rounded-2xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 text-left">
+                  <th className="px-4 py-3 text-neutral-400 font-medium text-sm">邮箱</th>
+                  <th className="px-4 py-3 text-neutral-400 font-medium text-sm">状态</th>
+                  <th className="px-4 py-3 text-neutral-400 font-medium text-sm">剩余天数</th>
+                  <th className="px-4 py-3 text-neutral-400 font-medium text-sm">到期时间</th>
+                  <th className="px-4 py-3 text-neutral-400 font-medium text-sm">来源</th>
+                  <th className="px-4 py-3 text-neutral-400 font-medium text-sm">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {premiumUsers.map((user) => (
+                  <tr key={user.user_id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="px-4 py-3 text-white font-mono text-sm">
+                      {user.email || user.user_id}
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.is_active ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-400 text-xs rounded-full">
+                          <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                          有效
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-neutral-500/10 text-neutral-400 text-xs rounded-full">
+                          <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full"></span>
+                          已过期
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-white font-bold">
+                      {user.remaining_days > 0 ? `${user.remaining_days} 天` : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-neutral-400 text-sm">
+                      {user.expires ? new Date(user.expires).toLocaleDateString('zh-CN') : '-'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        user.source === 'payment' ? 'bg-blue-500/10 text-blue-400' :
+                        user.source === 'invite' ? 'bg-purple-500/10 text-purple-400' :
+                        user.source === 'gift' ? 'bg-pink-500/10 text-pink-400' :
+                        'bg-neutral-500/10 text-neutral-400'
+                      }`}>
+                        {user.source === 'payment' ? '付费' :
+                         user.source === 'invite' ? '邀请' :
+                         user.source === 'gift' ? '赠送' :
+                         user.source === 'activity' ? '活动' : user.source}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => revokePremium(user.user_id)}
+                        className="text-red-400 hover:text-red-300 text-sm"
+                      >
+                        撤销
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {premiumUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
+                      暂无专业版用户
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

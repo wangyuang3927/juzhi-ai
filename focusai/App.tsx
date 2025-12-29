@@ -36,7 +36,8 @@ const App: React.FC = () => {
   };
 
   const [currentView, setCurrentView] = useState<ViewState>(getInitialView());
-  const [items, setItems] = useState<NewsItem[]>([]);
+  const [items, setItems] = useState<NewsItem[]>([]);  // 专属简报（个性化）
+  const [generalItems, setGeneralItems] = useState<NewsItem[]>([]);  // 通用简报
   const [loading, setLoading] = useState(true);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [bookmarkedItems, setBookmarkedItems] = useState<NewsItem[]>([]);  // 存储完整的收藏对象
@@ -54,6 +55,7 @@ const App: React.FC = () => {
     return { profession: '职场人士' };
   });
   const [user, setUser] = useState<User | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
 
   // 监听登录状态
   useEffect(() => {
@@ -68,40 +70,62 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // 检查专业版状态
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      try {
+        const userId = getUserId();
+        const res = await fetch(`${API_BASE_URL}/api/invite/status/${userId}`);
+        const data = await res.json();
+        setIsPremium(data.is_premium || false);
+      } catch (error) {
+        console.error('Failed to check premium status:', error);
+        setIsPremium(false);
+      }
+    };
+    checkPremiumStatus();
+  }, [user]);
+
   // 从后端加载已有数据
   const fetchInsights = async () => {
     setLoading(true);
     try {
-      // 先尝试获取真实数据
-      let response = await fetch(`${API_BASE_URL}/api/insights`);
-      let data = await response.json();
+      const userId = getUserId();
       
-      // 如果真实数据为空，获取 Mock 数据
-      if (!data.items || data.items.length === 0) {
-        response = await fetch(`${API_BASE_URL}/api/insights/mock`);
-        data = await response.json();
-        setItems(data);
-      } else {
-        setItems(data.items);
+      // 1. 加载用户今日已生成的专属新闻
+      const userNewsRes = await fetch(`${API_BASE_URL}/api/insights/user-daily-news/${encodeURIComponent(userId)}`);
+      const userNewsData = await userNewsRes.json();
+      
+      if (userNewsData.items && userNewsData.items.length > 0) {
+        console.log('📦 加载用户今日已有专属新闻');
+        setItems(userNewsData.items);
       }
+      
+      // 2. 加载用户今日已生成的通用新闻
+      const generalNewsRes = await fetch(`${API_BASE_URL}/api/insights/user-daily-general-news/${encodeURIComponent(userId)}`);
+      const generalNewsData = await generalNewsRes.json();
+      
+      if (generalNewsData.items && generalNewsData.items.length > 0) {
+        console.log('📦 加载用户今日已有通用新闻');
+        setGeneralItems(generalNewsData.items);
+      }
+      
     } catch (error) {
-      console.error('Failed to fetch from API, using local mock:', error);
-      setItems(MOCK_NEWS);
+      console.error('Failed to fetch from API:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 生成新的 AI 新闻（调用 Tavily + AI）
+  // 生成专属 AI 新闻（关联用户职业）
   const generateNews = async (): Promise<boolean> => {
     try {
-      console.log('🔄 开始生成 AI 新闻...');
+      console.log('🔄 开始生成专属 AI 新闻...');
       const userId = getUserId();
       const response = await fetch(
         `${API_BASE_URL}/api/insights/generate?profession=${encodeURIComponent(userSettings.profession)}&user_id=${encodeURIComponent(userId)}`
       );
       
-      // 检查错误响应
       if (!response.ok) {
         const errorData = await response.json();
         console.error('API 错误:', errorData.detail);
@@ -112,11 +136,10 @@ const App: React.FC = () => {
       const data = await response.json();
       
       if (data.items && data.items.length > 0) {
-        // 将生成的新闻添加到列表（去重）
         setItems(prev => {
           const existingIds = new Set(prev.map(item => item.id));
           const newItems = data.items.filter((item: NewsItem) => !existingIds.has(item.id));
-          console.log(`✅ 生成了 ${newItems.length} 条新新闻`);
+          console.log(`✅ 生成了 ${newItems.length} 条专属新闻`);
           return [...newItems, ...prev];
         });
         return true;
@@ -126,7 +149,44 @@ const App: React.FC = () => {
       }
       return false;
     } catch (error) {
-      console.error('生成新闻失败:', error);
+      console.error('生成专属新闻失败:', error);
+      return false;
+    }
+  };
+
+  // 生成通用 AI 新闻（不关联职业）
+  const generateGeneralNews = async (): Promise<boolean> => {
+    try {
+      console.log('🔄 开始生成通用 AI 新闻...');
+      const userId = getUserId();
+      const response = await fetch(
+        `${API_BASE_URL}/api/insights/generate-general?user_id=${encodeURIComponent(userId)}`
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API 错误:', errorData.detail);
+        alert(errorData.detail || '请求失败，请稍后重试');
+        return false;
+      }
+      
+      const data = await response.json();
+      
+      if (data.items && data.items.length > 0) {
+        setGeneralItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = data.items.filter((item: NewsItem) => !existingIds.has(item.id));
+          console.log(`✅ 生成了 ${newItems.length} 条通用新闻`);
+          return [...newItems, ...prev];
+        });
+        return true;
+      } else if (data.error) {
+        console.error('生成失败:', data.error);
+        return false;
+      }
+      return false;
+    } catch (error) {
+      console.error('生成通用新闻失败:', error);
       return false;
     }
   };
@@ -254,12 +314,16 @@ const App: React.FC = () => {
             <div className="pb-20">
               <ExplorePage
                 items={items}
+                generalItems={generalItems}
                 bookmarks={bookmarks}
                 userProfession={userSettings.profession}
                 onToggleBookmark={toggleBookmark}
                 onDelete={deleteItem}
                 onRefreshNews={generateNews}
+                onRefreshGeneralNews={generateGeneralNews}
                 onBookmarkItem={bookmarkItem}
+                isPremium={isPremium}
+                onNavigate={setCurrentView}
               />
             </div>
           );

@@ -46,11 +46,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, user }) => {
   // Define which views are considered "App Dashboard" views
   const isAppView = [ViewState.HOME, ViewState.BOOKMARKS, ViewState.SETTINGS].includes(currentView);
 
-  // 应用内导航项
+  // 应用内导航项（设置移到右上角用户头像点击）
   const appNavItems = [
     { id: ViewState.HOME, label: '探索', icon: Compass },
     { id: ViewState.BOOKMARKS, label: '收藏', icon: Bookmark },
-    { id: ViewState.SETTINGS, label: '设置', icon: Settings },
   ];
 
   return (
@@ -65,38 +64,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, user }) => {
             onClick={handleLogoClick}
           >
             <div className="relative w-9 h-9 flex items-center justify-center rounded-xl overflow-hidden group-hover:scale-110 transition-transform bg-[#0a0a12]">
-              {/* 彩色光线 - 从边缘向中心汇聚（渐变从边缘亮到中心透明） */}
-              
-              {/* 12点方向 - 正上 */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-1/2 bg-gradient-to-b from-cyan-400 to-transparent"></div>
-              {/* 1点方向 */}
-              <div className="absolute top-[3px] right-[8px] w-[1.5px] h-[45%] bg-gradient-to-b from-blue-400 to-transparent origin-bottom -rotate-[30deg]"></div>
-              {/* 2点方向 */}
-              <div className="absolute top-[8px] right-[3px] w-[1.5px] h-[45%] bg-gradient-to-b from-indigo-400 to-transparent origin-bottom -rotate-[60deg]"></div>
-              
-              {/* 3点方向 - 正右 */}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-[2px] bg-gradient-to-l from-purple-500 to-transparent"></div>
-              {/* 4点方向 */}
-              <div className="absolute bottom-[8px] right-[3px] w-[1.5px] h-[45%] bg-gradient-to-t from-violet-400 to-transparent origin-top rotate-[60deg]"></div>
-              {/* 5点方向 */}
-              <div className="absolute bottom-[3px] right-[8px] w-[1.5px] h-[45%] bg-gradient-to-t from-fuchsia-400 to-transparent origin-top rotate-[30deg]"></div>
-              
-              {/* 6点方向 - 正下 */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[2px] h-1/2 bg-gradient-to-t from-pink-400 to-transparent"></div>
-              {/* 7点方向 */}
-              <div className="absolute bottom-[3px] left-[8px] w-[1.5px] h-[45%] bg-gradient-to-t from-red-400 to-transparent origin-top -rotate-[30deg]"></div>
-              {/* 8点方向 */}
-              <div className="absolute bottom-[8px] left-[3px] w-[1.5px] h-[45%] bg-gradient-to-t from-orange-400 to-transparent origin-top -rotate-[60deg]"></div>
-              
-              {/* 9点方向 - 正左 */}
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/2 h-[2px] bg-gradient-to-r from-amber-400 to-transparent"></div>
-              {/* 10点方向 */}
-              <div className="absolute top-[8px] left-[3px] w-[1.5px] h-[45%] bg-gradient-to-b from-yellow-400 to-transparent origin-bottom rotate-[60deg]"></div>
-              {/* 11点方向 */}
-              <div className="absolute top-[3px] left-[8px] w-[1.5px] h-[45%] bg-gradient-to-b from-lime-400 to-transparent origin-bottom rotate-[30deg]"></div>
-              
-              {/* 中心光点 */}
-              <div className="relative w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,1),0_0_12px_rgba(147,51,234,0.8),0_0_20px_rgba(59,130,246,0.5)]"></div>
+              <img src="/logo.svg" alt="聚智 AI Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-lg font-bold tracking-tight text-white">聚智 AI</span>
           </div>
@@ -167,10 +135,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, user }) => {
           <div className="hidden md:flex items-center gap-4 flex-shrink-0">
             {user ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-neutral-400">
-                  <User size={16} />
+                <button 
+                  onClick={() => onNavigate(ViewState.SETTINGS)}
+                  className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-white/10"
+                >
+                  <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <User size={14} className="text-white" />
+                  </div>
                   <span className="max-w-[120px] truncate">{user.email}</span>
-                </div>
+                </button>
                 <button 
                   onClick={handleLogout}
                   className="text-sm font-medium text-neutral-300 hover:text-red-400 transition-colors flex items-center gap-1"
@@ -212,6 +185,21 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, user }) => {
             {isAppView ? (
               // App 内导航
               <>
+                {/* 用户信息 - 点击进入设置 */}
+                {user && (
+                  <button
+                    onClick={() => {onNavigate(ViewState.SETTINGS); setMobileMenuOpen(false)}}
+                    className={`flex items-center gap-3 p-3 rounded-lg mb-2 border-b border-white/10 pb-4 ${currentView === ViewState.SETTINGS ? 'bg-blue-500/20 text-blue-400' : 'text-neutral-300'}`}
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                      <User size={16} className="text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium">{user.email}</div>
+                      <div className="text-xs text-neutral-500">点击进入设置</div>
+                    </div>
+                  </button>
+                )}
                 {appNavItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -225,6 +213,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, user }) => {
                     </button>
                   );
                 })}
+                {/* 登出按钮 */}
+                {user && (
+                  <button
+                    onClick={() => {handleLogout(); setMobileMenuOpen(false)}}
+                    className="flex items-center gap-3 p-3 rounded-lg text-red-400 mt-2 border-t border-white/10 pt-4"
+                  >
+                    <LogOut size={18} />
+                    登出
+                  </button>
+                )}
               </>
             ) : (
               // 营销页导航

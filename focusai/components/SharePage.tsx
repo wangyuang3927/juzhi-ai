@@ -9,6 +9,7 @@ interface ShareItem {
   summary: string;
   tags: string[];
   timestamp: string;
+  url?: string;  // 原文链接
 }
 
 interface SharePageProps {
@@ -20,25 +21,37 @@ const SharePage: React.FC<SharePageProps> = ({ onNavigate }) => {
   const [items, setItems] = useState<ShareItem[]>([]);
   const [date, setDate] = useState('');
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [shareTitle, setShareTitle] = useState('今日 AI 热点精选');
 
   useEffect(() => {
     // 从 URL 获取参数
     const params = new URLSearchParams(window.location.search);
     const dateParam = params.get('date') || new Date().toISOString().split('T')[0];
     const codeParam = params.get('code');
+    const uidParam = params.get('uid');  // 用户 ID
+    const typeParam = params.get('type');  // general 或 personal
     
     setDate(dateParam);
     setInviteCode(codeParam);
     
-    loadShareData(dateParam, codeParam);
+    loadShareData(dateParam, codeParam, uidParam, typeParam);
   }, []);
 
-  const loadShareData = async (date: string, code: string | null) => {
+  const loadShareData = async (date: string, code: string | null, uid: string | null, contentType: string | null) => {
     try {
-      const url = `${API_BASE_URL}/api/share/daily/${date}${code ? `?invite_code=${code}` : ''}`;
+      const params = new URLSearchParams();
+      if (code) params.append('invite_code', code);
+      if (uid) params.append('user_id', uid);
+      if (contentType) params.append('type', contentType);
+      
+      const queryString = params.toString();
+      const url = `${API_BASE_URL}/api/share/daily/${date}${queryString ? `?${queryString}` : ''}`;
       const res = await fetch(url);
       const data = await res.json();
       setItems(data.items || []);
+      if (data.share_title) {
+        setShareTitle(data.share_title);
+      }
     } catch (error) {
       console.error('Failed to load share data:', error);
     } finally {
@@ -100,7 +113,7 @@ const SharePage: React.FC<SharePageProps> = ({ onNavigate }) => {
             <span>{formatDate(date)}</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            今日 AI 热点精选
+            {shareTitle}
           </h1>
           <p className="text-neutral-400 max-w-lg mx-auto">
             为职场人士精选的 AI 行业动态，助你把握趋势、提升效率
@@ -124,7 +137,18 @@ const SharePage: React.FC<SharePageProps> = ({ onNavigate }) => {
                     {index + 1}
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                    {item.url ? (
+                      <a 
+                        href={item.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-lg font-bold text-white mb-2 block hover:text-blue-400 transition-colors cursor-pointer"
+                      >
+                        {item.title} ↗
+                      </a>
+                    ) : (
+                      <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                    )}
                     <p className="text-neutral-400 text-sm leading-relaxed mb-3">{item.summary}</p>
                     <div className="flex flex-wrap gap-2">
                       {item.tags.map((tag) => (
@@ -148,7 +172,7 @@ const SharePage: React.FC<SharePageProps> = ({ onNavigate }) => {
           <div className="bg-gradient-to-br from-blue-900/50 to-purple-900/50 border border-blue-500/30 rounded-2xl p-8">
             <h2 className="text-2xl font-bold mb-4">想要更个性化的 AI 资讯？</h2>
             <p className="text-neutral-400 mb-6 max-w-md mx-auto">
-              注册 FocusAI，告诉我们你的职业，获取专门为你定制的 AI 行业洞察和工具推荐
+              注册聚智AI，告诉我们你的职业，获取专门为你定制的 AI 行业洞察和工具推荐
             </p>
             <div className="flex items-center justify-center gap-4">
               <button
@@ -175,7 +199,7 @@ const SharePage: React.FC<SharePageProps> = ({ onNavigate }) => {
 
         {/* 页脚 */}
         <div className="mt-16 text-center text-xs text-neutral-600">
-          <p>FocusAI © 2024 / 职场人士的 AI 信息伙伴</p>
+          <p>聚智AI © 2024 / 职场人士的 AI 信息伙伴</p>
         </div>
       </div>
     </div>

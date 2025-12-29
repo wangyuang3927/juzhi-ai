@@ -110,6 +110,30 @@ class ContentCache:
 # 全局缓存实例
 content_cache = ContentCache()
 
+# 数据存储路径
+from pathlib import Path
+import json
+DATA_DIR = Path(__file__).parent.parent / "data"
+
+
+def _save_user_daily_content(user_id: str, content_type: str, date: str, items: list):
+    """保存免费用户的每日内容（用于锁定）"""
+    try:
+        user_dir = DATA_DIR / "user_daily" / content_type
+        user_dir.mkdir(parents=True, exist_ok=True)
+        user_file = user_dir / f"{user_id}_{date}.json"
+        
+        with open(user_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                "user_id": user_id,
+                "date": date,
+                "items": items,
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }, f, ensure_ascii=False, indent=2)
+        print(f"💾 [{content_type}] 保存免费用户 {user_id} 的今日内容")
+    except Exception as e:
+        print(f"保存用户每日内容失败: {e}")
+
 
 @router.get("", response_model=InsightListResponse)
 async def list_insights(
@@ -194,19 +218,59 @@ async def get_mock_insights(
 @router.get("/tools")
 async def get_ai_tools(
     profession: str = Query("职场人士", description="用户职业"),
+    user_id: str = Query("anonymous", description="用户ID"),
     force_refresh: bool = Query(False, description="强制刷新，跳过缓存")
 ):
     """
     获取 AI 工具推荐
-    - 首先尝试从缓存获取（瞬间返回）
-    - 缓存不足时调用 Tavily API
+    - 免费用户：每天只生成一次，之后返回相同内容
+    - 专业版用户：可以无限刷新
     """
     from services.ai_processor import ai_processor
+    from services.supabase_db import get_premium_status
+    from datetime import datetime
     
-    # 1. 尝试从缓存获取
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # 检查用户专业版状态（Supabase 可能未配置，优雅降级）
+    is_premium = False
+    try:
+        premium_status = get_premium_status(user_id)
+        is_premium = premium_status and premium_status.get("expires_at")
+        if is_premium:
+            from datetime import datetime as dt
+            expires_at = dt.fromisoformat(premium_status["expires_at"].replace("Z", "+00:00"))
+            is_premium = expires_at > dt.now(expires_at.tzinfo)
+    except Exception as e:
+        print(f"⚠️ [Tools] 获取专业版状态失败（Supabase可能未配置）: {e}")
+        is_premium = False
+    
+    # 免费用户：检查今日是否已有内容
+    if not is_premium and not force_refresh:
+        user_tools_dir = DATA_DIR / "user_daily" / "tools"
+        user_tools_file = user_tools_dir / f"{user_id}_{today}.json"
+        
+        if user_tools_file.exists():
+            try:
+                with open(user_tools_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    print(f"📦 [Tools] 免费用户 {user_id} 返回今日已有内容")
+                    return {
+                        "items": data.get("items", []),
+                        "profession": profession,
+                        "source": "user_daily_cache",
+                        "cached": True
+                    }
+            except Exception as e:
+                print(f"读取用户工具缓存失败: {e}")
+    
+    # 专业版或首次访问：从缓存获取或生成新内容
     if not force_refresh:
         cached_items, need_fetch = content_cache.get_tools(profession)
         if not need_fetch:
+            # 免费用户首次访问，保存今日内容
+            if not is_premium:
+                _save_user_daily_content(user_id, "tools", today, cached_items)
             return {
                 "items": cached_items, 
                 "profession": profession, 
@@ -214,24 +278,26 @@ async def get_ai_tools(
                 "cached": True
             }
     
-    # 2. 缓存不足，调用 API
+    # 缓存不足，调用 API
     try:
         seed = content_cache.get_next_seed("tools", profession)
         print(f"🔄 [Tools] 缓存不足，调用 API (seed={seed})")
         
-        # 获取 12 条结果
         tools = await ai_processor.search_and_recommend_tools(
             profession, 
             refresh_seed=seed,
-            result_count=ContentCache.FETCH_COUNT  # 获取 12 条
+            result_count=ContentCache.FETCH_COUNT
         )
         
-        # 返回前 6 条，剩余的存入缓存
         display_items = tools[:ContentCache.DISPLAY_COUNT]
         cache_items = tools[ContentCache.DISPLAY_COUNT:]
         
         if cache_items:
             content_cache.set_tools(profession, cache_items, seed)
+        
+        # 免费用户首次访问，保存今日内容
+        if not is_premium:
+            _save_user_daily_content(user_id, "tools", today, display_items)
         
         return {
             "items": display_items, 
@@ -255,19 +321,59 @@ async def get_ai_tools(
 @router.get("/cases")
 async def get_ai_cases(
     profession: str = Query("职场人士", description="用户职业"),
+    user_id: str = Query("anonymous", description="用户ID"),
     force_refresh: bool = Query(False, description="强制刷新，跳过缓存")
 ):
     """
     获取 AI 实战案例
-    - 首先尝试从缓存获取（瞬间返回）
-    - 缓存不足时调用 Tavily API
+    - 免费用户：每天只生成一次，之后返回相同内容
+    - 专业版用户：可以无限刷新
     """
     from services.ai_processor import ai_processor
+    from services.supabase_db import get_premium_status
+    from datetime import datetime
     
-    # 1. 尝试从缓存获取
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # 检查用户专业版状态（Supabase 可能未配置，优雅降级）
+    is_premium = False
+    try:
+        premium_status = get_premium_status(user_id)
+        is_premium = premium_status and premium_status.get("expires_at")
+        if is_premium:
+            from datetime import datetime as dt
+            expires_at = dt.fromisoformat(premium_status["expires_at"].replace("Z", "+00:00"))
+            is_premium = expires_at > dt.now(expires_at.tzinfo)
+    except Exception as e:
+        print(f"⚠️ [Cases] 获取专业版状态失败（Supabase可能未配置）: {e}")
+        is_premium = False
+    
+    # 免费用户：检查今日是否已有内容
+    if not is_premium and not force_refresh:
+        user_cases_dir = DATA_DIR / "user_daily" / "cases"
+        user_cases_file = user_cases_dir / f"{user_id}_{today}.json"
+        
+        if user_cases_file.exists():
+            try:
+                with open(user_cases_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    print(f"📦 [Cases] 免费用户 {user_id} 返回今日已有内容")
+                    return {
+                        "items": data.get("items", []),
+                        "profession": profession,
+                        "source": "user_daily_cache",
+                        "cached": True
+                    }
+            except Exception as e:
+                print(f"读取用户案例缓存失败: {e}")
+    
+    # 专业版或首次访问：从缓存获取或生成新内容
     if not force_refresh:
         cached_items, need_fetch = content_cache.get_cases(profession)
         if not need_fetch:
+            # 免费用户首次访问，保存今日内容
+            if not is_premium:
+                _save_user_daily_content(user_id, "cases", today, cached_items)
             return {
                 "items": cached_items, 
                 "profession": profession, 
@@ -275,24 +381,26 @@ async def get_ai_cases(
                 "cached": True
             }
     
-    # 2. 缓存不足，调用 API
+    # 缓存不足，调用 API
     try:
         seed = content_cache.get_next_seed("cases", profession)
         print(f"🔄 [Cases] 缓存不足，调用 API (seed={seed})")
         
-        # 获取 12 条结果
         cases = await ai_processor.search_and_recommend_cases(
             profession, 
             refresh_seed=seed,
-            result_count=ContentCache.FETCH_COUNT  # 获取 12 条
+            result_count=ContentCache.FETCH_COUNT
         )
         
-        # 返回前 6 条，剩余的存入缓存
         display_items = cases[:ContentCache.DISPLAY_COUNT]
         cache_items = cases[ContentCache.DISPLAY_COUNT:]
         
         if cache_items:
             content_cache.set_cases(profession, cache_items, seed)
+        
+        # 免费用户首次访问，保存今日内容
+        if not is_premium:
+            _save_user_daily_content(user_id, "cases", today, display_items)
         
         return {
             "items": display_items, 
@@ -353,81 +461,118 @@ async def generate_daily_news(
         
         api_key = keys[0]
         
-        # 搜索最新 AI 新闻（中文）- 使用 2025 年关键词
-        query_templates = [
-            "AI人工智能 最新动态 2025",
-            "AI大模型 最新发布 2025",
-            "人工智能 行业新闻 最新",
-            "AI工具 新功能 发布 2025",
-            "ChatGPT Claude Gemini 最新消息",
-            "AI Agent 智能体 最新进展",
+        # 搜索最新 AI 新闻 - 使用更精确的时间关键词
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        date_str = today.strftime("%Y年%m月")  # 如 "2025年12月"
+        yesterday = (today - timedelta(days=1)).strftime("%m月%d日")
+        
+        # 国内新闻搜索关键词
+        cn_query_templates = [
+            f"AI人工智能 最新新闻 {date_str}",
+            f"AI大模型 发布 {date_str}",
+            f"ChatGPT Claude Gemini 更新 {date_str}",
+            f"AI Agent 智能体 最新 {date_str}",
+            f"DeepSeek 字节豆包 百度文心 新闻",
+        ]
+        # 国际新闻搜索关键词
+        en_query_templates = [
+            "AI artificial intelligence news today",
+            "OpenAI Anthropic Google AI latest",
+            "ChatGPT Claude Gemini update",
+            "AI breakthrough technology news",
+            "machine learning deep learning news",
         ]
         
         import random
-        query = random.choice(query_templates)
-        print(f"   搜索查询: {query}")
+        cn_query = random.choice(cn_query_templates)
+        en_query = random.choice(en_query_templates)
+        print(f"   国内搜索: {cn_query}")
+        print(f"   国际搜索: {en_query}")
         
-        # 中文网站 + 国际可访问网站
-        allowed_domains = [
-            # 中文网站
-            "zhihu.com", "36kr.com", "sspai.com", "juejin.cn",
-            "mp.weixin.qq.com", "bilibili.com", "csdn.net",
-            "jianshu.com", "woshipm.com", "jiqizhixin.com",
+        # 中文网站（不含知乎）
+        cn_domains = [
+            "36kr.com", "sspai.com", "juejin.cn",
+            "mp.weixin.qq.com", "csdn.net", "jiqizhixin.com",
             "pingwest.com", "geekpark.net", "leiphone.com",
-            # 国际科技媒体（中国可访问）
+        ]
+        # 国际科技媒体
+        en_domains = [
             "theverge.com", "techcrunch.com", "wired.com",
             "arstechnica.com", "venturebeat.com", "zdnet.com",
             "cnet.com", "engadget.com", "thenextweb.com",
-            "reuters.com", "nature.com", "ieee.org",
-            "mit.edu", "stanford.edu", "openai.com",
-            "anthropic.com", "huggingface.co"
+            "reuters.com", "bbc.com", "nature.com", "ieee.org",
+            "openai.com", "anthropic.com", "huggingface.co",
+            "towardsdatascience.com", "medium.com"
         ]
         
         client = TavilyClient(api_key=api_key)
-        response = await asyncio.to_thread(
-            client.search,
-            query=query,
-            search_depth="basic",
-            max_results=15,
-            include_domains=allowed_domains,
-            days=3  # 限制为最近3天的内容
-        )
         
-        results = response.get("results", [])
+        # 搜索国内新闻
+        cn_response = await asyncio.to_thread(
+            client.search,
+            query=cn_query,
+            search_depth="advanced",
+            max_results=15,
+            include_domains=cn_domains,
+            days=3
+        )
+        cn_results = cn_response.get("results", [])
+        
+        # 搜索国际新闻
+        en_response = await asyncio.to_thread(
+            client.search,
+            query=en_query,
+            search_depth="advanced",
+            max_results=15,
+            include_domains=en_domains,
+            days=3
+        )
+        en_results = en_response.get("results", [])
+        
+        # 合并结果
+        results = cn_results + en_results
+        
         if not results:
             raise Exception("未搜索到有效新闻")
         
         print(f"   搜索到 {len(results)} 条结果")
         
-        # 格式化搜索结果供 AI 处理
+        # 格式化搜索结果供 AI 处理，包含发布日期
         search_context = ""
         for i, res in enumerate(results):
-            search_context += f"[{i+1}] 标题: {res.get('title', '')}\n链接: {res.get('url', '')}\n摘要: {res.get('content', '')}\n\n"
+            pub_date = res.get('published_date', '') or res.get('publishedDate', '') or '未知'
+            search_context += f"[{i+1}] 标题: {res.get('title', '')}\n链接: {res.get('url', '')}\n发布时间: {pub_date}\n摘要: {res.get('content', '')}\n\n"
         
         # AI 生成结构化新闻卡片
-        prompt = f"""你是一位专业的 AI 行业分析师。我为你搜集了一些最新的 AI 相关新闻。
-请仔细阅读以下搜索结果，并为"{profession}"生成 6 条高质量的 AI 行业洞察卡片。
+        today_str = today.strftime("%Y年%m月%d日")
+        prompt = f"""你是一位专业的 AI 行业分析师。今天是 {today_str}。
+我为你搜集了国内外最新的 AI 相关新闻，请仔细阅读并为"{profession}"生成 10 条高质量的 AI 行业洞察卡片。
 
 搜索结果：
 {search_context}
 
 要求：
-1. 每条洞察都要基于真实的搜索结果，不要编造
-2. 为每条新闻生成：标题、标签、摘要、对该职业的具体影响、可直接使用的 Prompt
-3. 摘要要简洁有信息量（50-100字）
-4. 影响分析要针对 {profession} 这个职业具体化
-5. Prompt 要实用，可以直接复制使用
+1. 【时效性优先】优先选择发布时间最近的新闻
+2. 【国内外平衡】必须同时包含国内和国际新闻，大约各占一半
+3. 每条洞察都必须基于真实的搜索结果，不要编造
+4. 【重要】每条新闻必须使用不同的原文链接(url)，绝对不能重复！
+5. url 字段必须直接复制搜索结果中的“链接”，不要修改
+6. 为每条新闻生成：标题、标签、摘要、对该职业的具体影响、可直接使用的 Prompt
+7. 摘要要简洁有信息量（50-100字），英文新闻请翻译成中文
+8. 影响分析要针对 {profession} 这个职业具体化
+9. Prompt 要实用，可以直接复制使用
 
 请严格按照以下 JSON 格式返回：
 [
   {{
     "id": "news-1",
-    "title": "新闻标题",
+    "title": "新闻标题（可以重新组织语言，但要忠于原意）",
     "tags": ["#标签1", "#标签2", "#标签3"],
-    "summary": "新闻摘要，简洁有信息量",
+    "summary": "新闻摘要，简洁有信息量，包含时间信息",
     "impact": "对{profession}的具体影响和建议",
     "prompt": "可直接使用的 Prompt 示例",
-    "url": "原文链接"
+    "url": "直接复制搜索结果中的链接，不要修改"
   }}
 ]
 
@@ -439,7 +584,7 @@ async def generate_daily_news(
             model=ai_processor.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=4000
+            max_tokens=6000  # 增加以支持10条新闻
         )
         
         content = response.choices[0].message.content.strip()
@@ -456,6 +601,20 @@ async def generate_daily_news(
             content = content[start:end+1]
         
         news_items = json_module.loads(content)
+        original_count = len(news_items)
+        
+        # 去除重复 URL 的新闻
+        seen_urls = set()
+        unique_items = []
+        for item in news_items:
+            url = item.get('url', '')
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                unique_items.append(item)
+        news_items = unique_items
+        
+        if len(news_items) < original_count:
+            print(f"⚠️ [News] 去除了 {original_count - len(news_items)} 条重复 URL 的新闻")
         
         # 添加唯一 ID 和时间戳
         from datetime import datetime
@@ -465,6 +624,23 @@ async def generate_daily_news(
             item['timestamp'] = timestamp
         
         print(f"✅ [News] 成功生成 {len(news_items)} 条新闻")
+        
+        # 保存用户的新闻到文件（供分享使用）
+        try:
+            user_news_dir = DATA_DIR / "user_news"
+            user_news_dir.mkdir(parents=True, exist_ok=True)
+            user_news_file = user_news_dir / f"{user_id}_{timestamp}.json"
+            with open(user_news_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "user_id": user_id,
+                    "profession": profession,
+                    "date": timestamp,
+                    "items": news_items,
+                    "created_at": datetime.now().isoformat()
+                }, f, ensure_ascii=False, indent=2)
+            print(f"   已保存用户新闻: {user_news_file}")
+        except Exception as save_error:
+            print(f"   保存用户新闻失败: {save_error}")
         
         return {
             "items": news_items,
@@ -481,6 +657,294 @@ async def generate_daily_news(
             "error": str(e),
             "source": "error"
         }
+
+
+@router.get("/user-daily-news/{user_id}")
+async def get_user_daily_news(user_id: str):
+    """
+    获取用户今日已生成的新闻
+    - 用于页面刷新后恢复用户的内容
+    - 免费用户每天只能看到固定的内容
+    """
+    from datetime import datetime
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    user_news_dir = DATA_DIR / "user_news"
+    user_news_file = user_news_dir / f"{user_id}_{today}.json"
+    
+    if user_news_file.exists():
+        try:
+            with open(user_news_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"📦 [News] 返回用户 {user_id} 的今日新闻")
+                return {
+                    "items": data.get("items", []),
+                    "profession": data.get("profession", ""),
+                    "date": data.get("date", today),
+                    "source": "user_daily_cache"
+                }
+        except Exception as e:
+            print(f"读取用户新闻失败: {e}")
+    
+    return {
+        "items": [],
+        "source": "not_found"
+    }
+
+
+# ============================================
+# 生成通用AI新闻（不关联用户职业）
+# ============================================
+@router.get("/generate-general")
+async def generate_general_news(
+    user_id: str = Query("anonymous", description="用户ID")
+):
+    """
+    生成通用 AI 新闻 - 不关联用户职业，适合所有人阅读
+    """
+    from services.ai_processor import ai_processor
+    from services.content_safety import check_rate_limit, is_user_blocked
+    import uuid
+    import asyncio
+    from tavily import TavilyClient
+    from config import get_settings
+    
+    # 安全检测
+    if is_user_blocked(user_id):
+        raise HTTPException(status_code=403, detail="账号已被限制，请联系管理员")
+    
+    rate_ok, rate_msg = check_rate_limit(user_id)
+    if not rate_ok:
+        raise HTTPException(status_code=429, detail=rate_msg)
+    
+    print(f"🔄 [GeneralNews] 开始生成通用AI新闻")
+    
+    try:
+        # 获取 Tavily API Key
+        keys = get_settings().get_tavily_keys()
+        if not keys:
+            raise Exception("未配置 Tavily API Key")
+        
+        api_key = keys[0]
+        
+        # 搜索最新 AI 新闻 - 国内外分开搜索
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        date_str = today.strftime("%Y年%m月")
+        
+        # 国内新闻搜索关键词
+        cn_query_templates = [
+            f"AI人工智能 重大突破 {date_str}",
+            f"AI大模型 重磅发布 {date_str}",
+            f"DeepSeek 字节豆包 百度文心 阿里通义 新闻",
+            f"AI Agent 智能体 最新突破 {date_str}",
+        ]
+        # 国际新闻搜索关键词
+        en_query_templates = [
+            "AI artificial intelligence breakthrough news",
+            "OpenAI Anthropic Google AI major update",
+            "ChatGPT Claude Gemini latest news",
+            "AI technology innovation news today",
+        ]
+        
+        import random
+        cn_query = random.choice(cn_query_templates)
+        en_query = random.choice(en_query_templates)
+        print(f"   国内搜索: {cn_query}")
+        print(f"   国际搜索: {en_query}")
+        
+        # 中文网站（不含知乎）
+        cn_domains = [
+            "36kr.com", "sspai.com", "juejin.cn",
+            "mp.weixin.qq.com", "csdn.net", "jiqizhixin.com",
+            "pingwest.com", "geekpark.net", "leiphone.com",
+        ]
+        # 国际科技媒体
+        en_domains = [
+            "theverge.com", "techcrunch.com", "wired.com",
+            "arstechnica.com", "venturebeat.com", "zdnet.com",
+            "cnet.com", "engadget.com", "thenextweb.com",
+            "reuters.com", "bbc.com", "nature.com", "ieee.org",
+            "openai.com", "anthropic.com", "huggingface.co",
+            "towardsdatascience.com", "medium.com"
+        ]
+        
+        client = TavilyClient(api_key=api_key)
+        
+        # 搜索国内新闻
+        cn_response = await asyncio.to_thread(
+            client.search,
+            query=cn_query,
+            search_depth="advanced",
+            max_results=15,
+            include_domains=cn_domains,
+            days=3
+        )
+        cn_results = cn_response.get("results", [])
+        
+        # 搜索国际新闻
+        en_response = await asyncio.to_thread(
+            client.search,
+            query=en_query,
+            search_depth="advanced",
+            max_results=15,
+            include_domains=en_domains,
+            days=3
+        )
+        en_results = en_response.get("results", [])
+        
+        # 合并结果
+        results = cn_results + en_results
+        
+        if not results:
+            raise Exception("未搜索到有效新闻")
+        
+        print(f"   搜索到 {len(results)} 条结果")
+        
+        # 格式化搜索结果供 AI 处理
+        search_context = ""
+        for i, res in enumerate(results):
+            pub_date = res.get('published_date', '') or res.get('publishedDate', '') or '未知'
+            search_context += f"[{i+1}] 标题: {res.get('title', '')}\n链接: {res.get('url', '')}\n发布时间: {pub_date}\n摘要: {res.get('content', '')}\n\n"
+        
+        # AI 生成结构化新闻卡片（通用版，不关联职业）
+        today_str = today.strftime("%Y年%m月%d日")
+        prompt = f"""你是一位专业的 AI 行业分析师。今天是 {today_str}。
+请仔细阅读以下搜索结果，生成 10 条高质量的 AI 行业新闻简报。
+
+搜索结果：
+{search_context}
+
+要求：
+1. 【时效性优先】优先选择发布时间最近的新闻
+2. 【国内外平衡】必须同时包含国内和国际新闻，大约各占一半
+3. 每条新闻都必须基于真实的搜索结果，不要编造
+4. 【重要】每条新闻必须使用不同的原文链接(url)，绝对不能重复！
+5. url 字段必须直接复制搜索结果中的"链接"，不要修改
+6. 摘要要简洁有信息量（80-120字），英文新闻请翻译成中文
+7. 重要性分析要说明这条新闻为什么值得关注
+8. 推荐行动要给出具体可操作的建议
+
+请严格按照以下 JSON 格式返回：
+[
+  {{
+    "id": "news-1",
+    "title": "新闻标题（简洁有力）",
+    "tags": ["#标签1", "#标签2", "#标签3"],
+    "summary": "新闻摘要，简洁有信息量，包含时间信息",
+    "impact": "这条新闻为什么重要，对普通人有什么影响",
+    "prompt": "一个通用的AI使用建议或可复制的Prompt",
+    "url": "直接复制搜索结果中的链接"
+  }}
+]
+
+只返回 JSON 数组，不要其他内容。"""
+
+        import json as json_module
+        response = await asyncio.to_thread(
+            ai_processor.client.chat.completions.create,
+            model=ai_processor.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=6000  # 增加以支持10条新闻
+        )
+        
+        content = response.choices[0].message.content.strip()
+        
+        # 提取 JSON
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].strip()
+        
+        start = content.find('[')
+        end = content.rfind(']')
+        if start != -1 and end != -1:
+            content = content[start:end+1]
+        
+        news_items = json_module.loads(content)
+        original_count = len(news_items)
+        
+        # 去除重复 URL 的新闻
+        seen_urls = set()
+        unique_items = []
+        for item in news_items:
+            url = item.get('url', '')
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                unique_items.append(item)
+        news_items = unique_items
+        
+        if len(news_items) < original_count:
+            print(f"⚠️ [GeneralNews] 去除了 {original_count - len(news_items)} 条重复 URL 的新闻")
+        
+        # 添加唯一 ID 和时间戳
+        timestamp = today.strftime("%Y-%m-%d")
+        for item in news_items:
+            item['id'] = f"general-{uuid.uuid4().hex[:8]}"
+            item['timestamp'] = timestamp
+        
+        print(f"✅ [GeneralNews] 成功生成 {len(news_items)} 条通用新闻")
+        
+        # 保存通用新闻到文件
+        try:
+            general_news_dir = DATA_DIR / "general_news"
+            general_news_dir.mkdir(parents=True, exist_ok=True)
+            general_news_file = general_news_dir / f"{user_id}_{timestamp}.json"
+            with open(general_news_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "user_id": user_id,
+                    "date": timestamp,
+                    "items": news_items,
+                    "created_at": datetime.now().isoformat()
+                }, f, ensure_ascii=False, indent=2)
+            print(f"   已保存通用新闻: {general_news_file}")
+        except Exception as save_error:
+            print(f"   保存通用新闻失败: {save_error}")
+        
+        return {
+            "items": news_items,
+            "source": "tavily_ai_general",
+            "count": len(news_items)
+        }
+        
+    except Exception as e:
+        print(f"❌ [GeneralNews] 生成失败: {e}")
+        return {
+            "items": [],
+            "error": str(e),
+            "source": "error"
+        }
+
+
+@router.get("/user-daily-general-news/{user_id}")
+async def get_user_daily_general_news(user_id: str):
+    """
+    获取用户今日已生成的通用新闻
+    """
+    from datetime import datetime
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    general_news_dir = DATA_DIR / "general_news"
+    general_news_file = general_news_dir / f"{user_id}_{today}.json"
+    
+    if general_news_file.exists():
+        try:
+            with open(general_news_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"📦 [GeneralNews] 返回用户 {user_id} 的今日通用新闻")
+                return {
+                    "items": data.get("items", []),
+                    "date": data.get("date", today),
+                    "source": "user_daily_cache"
+                }
+        except Exception as e:
+            print(f"读取通用新闻失败: {e}")
+    
+    return {
+        "items": [],
+        "source": "not_found"
+    }
 
 
 @router.get("/{insight_id}", response_model=InsightCard)

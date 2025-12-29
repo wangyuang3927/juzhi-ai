@@ -104,7 +104,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onSave }) => {
             </div>
             
             <p className="text-sm text-neutral-400 leading-relaxed">
-              FocusAI 会根据你的职业身份，重新解读每条 AI 新闻，为你提取最核心的价值和潜在影响。
+              聚智AI 会根据你的职业身份，重新解读每条 AI 新闻，为你提取最核心的价值和潜在影响。
             </p>
 
             {/* 自定义输入框 */}

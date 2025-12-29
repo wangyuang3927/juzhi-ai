@@ -11,8 +11,9 @@ from pathlib import Path
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
-# 管理员密码（生产环境应使用环境变量）
-ADMIN_PASSWORD = "focusai2024"
+# 管理员密码 - 从环境变量读取
+import os
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 # 数据存储路径
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -227,3 +228,147 @@ async def unblock_user(user_id: str, password: str):
     if success:
         return {"success": True, "message": f"已解封用户 {user_id}"}
     return {"success": False, "message": "用户不存在或未被封禁"}
+
+
+# ============================================
+# 专业版用户管理
+# ============================================
+
+PREMIUM_FILE = DATA_DIR / "users_premium.json"
+
+def load_premium_users() -> dict:
+    """加载专业版用户数据"""
+    if not PREMIUM_FILE.exists():
+        return {}
+    try:
+        with open(PREMIUM_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_premium_users(data: dict):
+    """保存专业版用户数据"""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(PREMIUM_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+class GrantPremiumRequest(BaseModel):
+    email: str
+    days: int = 30
+    source: str = "admin"
+
+
+@router.get("/premium/list")
+async def list_premium_users(password: str):
+    """获取所有专业版用户列表"""
+    verify_admin(password)
+    users = load_premium_users()
+    
+    result = []
+    for user_id, data in users.items():
+        expires = data.get('premium_expires')
+        is_active = False
+        remaining_days = 0
+        
+        if expires:
+            from datetime import datetime
+            expires_date = datetime.fromisoformat(expires)
+            if expires_date > datetime.now():
+                is_active = True
+                remaining_days = (expires_date - datetime.now()).days
+        
+        result.append({
+            "user_id": user_id,
+            "email": data.get("email", ""),
+            "expires": expires,
+            "is_active": is_active,
+            "remaining_days": remaining_days,
+            "source": data.get("source", "invite"),
+            "total_reward_days": data.get("total_reward_days", 0)
+        })
+    
+    # 按剩余天数排序
+    result.sort(key=lambda x: x['remaining_days'], reverse=True)
+    return result
+
+
+@router.post("/premium/grant")
+async def grant_premium(request: GrantPremiumRequest, password: str):
+    """
+    手动开通专业版
+    - email: 用户邮箱（用于查找用户）
+    - days: 开通天数
+    - source: 来源（admin/payment）
+    """
+    verify_admin(password)
+    
+    from datetime import datetime, timedelta
+    
+    users = load_premium_users()
+    
+    # 通过邮箱查找用户 ID（遍历所有用户画像）
+    user_id = None
+    try:
+        if USER_PROFILE_FILE.exists():
+            with open(USER_PROFILE_FILE, 'r', encoding='utf-8') as f:
+                profiles = json.load(f)
+                for uid, profile in profiles.items():
+                    if profile.get('email', '').lower() == request.email.lower():
+                        user_id = uid
+                        break
+    except:
+        pass
+    
+    # 如果找不到用户，使用邮箱作为用户 ID（支持预开通）
+    if not user_id:
+        user_id = f"email:{request.email}"
+    
+    # 获取现有专业版数据
+    user_data = users.get(user_id, {
+        "user_id": user_id,
+        "email": request.email,
+        "premium_expires": datetime.now().isoformat(),
+        "total_reward_days": 0
+    })
+    
+    # 计算新的过期时间
+    current_expires = datetime.fromisoformat(user_data.get('premium_expires', datetime.now().isoformat()))
+    if current_expires < datetime.now():
+        current_expires = datetime.now()
+    
+    new_expires = current_expires + timedelta(days=request.days)
+    
+    user_data['premium_expires'] = new_expires.isoformat()
+    user_data['email'] = request.email
+    user_data['source'] = request.source
+    user_data['total_reward_days'] = user_data.get('total_reward_days', 0) + request.days
+    user_data['granted_at'] = datetime.now().isoformat()
+    user_data['granted_by'] = "admin"
+    
+    users[user_id] = user_data
+    save_premium_users(users)
+    
+    return {
+        "success": True,
+        "message": f"已为 {request.email} 开通 {request.days} 天专业版",
+        "user_id": user_id,
+        "expires": new_expires.isoformat(),
+        "remaining_days": request.days
+    }
+
+
+@router.delete("/premium/{user_id}")
+async def revoke_premium(user_id: str, password: str):
+    """撤销用户专业版"""
+    verify_admin(password)
+    
+    users = load_premium_users()
+    
+    if user_id not in users:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    del users[user_id]
+    save_premium_users(users)
+    
+    return {"success": True, "message": f"已撤销用户 {user_id} 的专业版"}

@@ -33,13 +33,15 @@ async def lifespan(app: FastAPI):
 # Create Application
 # ============================================
 
+# 生产环境禁用 API 文档
+settings = get_settings()
 app = FastAPI(
     title="FocusAI API",
     description="职场 AI 之窗 - 私人定制的 AI 资讯平台",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
 )
 
 
@@ -47,17 +49,18 @@ app = FastAPI(
 # CORS Middleware
 # ============================================
 
+# CORS 配置 - 生产环境请设置 ALLOWED_ORIGINS 环境变量
+import os
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",      # React dev server
-        "http://localhost:5173",      # Vite dev server
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "https://*.vercel.app",       # Vercel deployments
-        "https://*.netlify.app",      # Netlify deployments
-        "*",                          # Allow all for development
-    ],
+    allow_origins=allowed_origins if not settings.debug else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

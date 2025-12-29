@@ -336,9 +336,12 @@ class AIProcessor:
         api_key = self.tavily_rotator.get_next_key()
         print(f"🔍 [Tools] 使用 Tavily Key: {api_key[:12]}...")
         
+        from datetime import datetime
+        current_year = datetime.now().year
+        
         # 多样化搜索关键词（优先中文）
         query_templates = [
-            f"{profession} AI工具推荐 提高效率 2024",
+            f"{profession} AI工具推荐 提高效率 {current_year}",
             f"适合{profession}的AI工具 必备神器",
             f"{profession} 如何用AI工具提升工作效率",
             f"AI工具推荐 {profession} 实用",
@@ -367,7 +370,8 @@ class AIProcessor:
                 query=query,
                 search_depth="basic",
                 max_results=20,  # 最大搜索结果数
-                include_domains=cn_domains  # 限制中文网站
+                include_domains=cn_domains,  # 限制中文网站
+                days=180  # 限制半年内的内容
             )
             
             # 格式化搜索结果供 AI 阅读
@@ -465,9 +469,12 @@ class AIProcessor:
         api_key = self.tavily_rotator.get_next_key()
         print(f"🔍 [Cases] 使用 Tavily Key: {api_key[:12]}...")
         
+        from datetime import datetime
+        current_year = datetime.now().year
+        
         # 多样化搜索关键词（优先中文）
         query_templates = [
-            f"{profession} AI应用实战案例 2024",
+            f"{profession} AI应用实战案例 {current_year}",
             f"{profession} 如何用AI提高效率 案例分享",
             f"AI在{profession}领域的应用 成功案例",
             f"{profession} AI实践经验 工作流",
@@ -496,7 +503,8 @@ class AIProcessor:
                 query=query,
                 search_depth="basic",
                 max_results=20,  # 最大搜索结果数
-                include_domains=cn_domains  # 限制中文网站
+                include_domains=cn_domains,  # 限制中文网站
+                days=180  # 限制半年内的内容
             )
             
             search_context = ""
