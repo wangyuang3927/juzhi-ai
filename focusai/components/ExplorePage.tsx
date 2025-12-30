@@ -31,6 +31,32 @@ interface ExplorePageProps {
 
 type TabType = 'news' | 'personal-news' | 'tools' | 'cases';
 
+// 免费用户每天刷新次数限制
+const FREE_DAILY_REFRESH_LIMIT = 3;
+
+const getRefreshCount = (type: string): number => {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `refresh_${type}_${today}`;
+  return parseInt(localStorage.getItem(key) || '0', 10);
+};
+
+const incrementRefreshCount = (type: string): number => {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `refresh_${type}_${today}`;
+  const count = getRefreshCount(type) + 1;
+  localStorage.setItem(key, count.toString());
+  return count;
+};
+
+const canRefresh = (type: string, isPremium: boolean): boolean => {
+  if (isPremium) return true;
+  return getRefreshCount(type) < FREE_DAILY_REFRESH_LIMIT;
+};
+
+const getRemainingRefreshes = (type: string): number => {
+  return Math.max(0, FREE_DAILY_REFRESH_LIMIT - getRefreshCount(type));
+};
+
 const ExplorePage: React.FC<ExplorePageProps> = ({
   items,
   generalItems = [],
@@ -56,6 +82,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({
   const [loadingCases, setLoadingCases] = useState(false);
   const [loadingNews, setLoadingNews] = useState(false);
   const [loadingGeneralNews, setLoadingGeneralNews] = useState(false);
+  const [, forceUpdate] = useState(0); // 用于强制刷新显示剩余次数
 
   // 加载工具推荐
   useEffect(() => {
@@ -363,13 +390,22 @@ const ExplorePage: React.FC<ExplorePageProps> = ({
                   />
                 ))}
               </div>
-              {/* 底部刷新按钮 - 仅今日显示，专业版可用 */}
+              {/* 底部刷新按钮 - 仅今日显示，免费用户每天3次 */}
               {selectedDate === getDateString(0) && (
-                <div className="flex justify-center mt-8">
-                  {isPremium ? (
+                <div className="flex flex-col items-center gap-2 mt-8">
+                  {!isPremium && (
+                    <span className="text-xs text-neutral-500">
+                      今日剩余 {getRemainingRefreshes('general-news')} 次
+                    </span>
+                  )}
+                  {canRefresh('general-news', isPremium) ? (
                     <button
                       onClick={async () => {
                         trackClick('获取更多通用资讯', 'general-news');
+                        if (!isPremium) {
+                          incrementRefreshCount('general-news');
+                          forceUpdate(n => n + 1);
+                        }
                         if (onRefreshGeneralNews) {
                           setLoadingGeneralNews(true);
                           try {
@@ -442,13 +478,22 @@ const ExplorePage: React.FC<ExplorePageProps> = ({
                   />
                 ))}
               </div>
-              {/* 底部刷新按钮 - 仅今日显示，专业版可用 */}
+              {/* 底部刷新按钮 - 仅今日显示，免费用户每天3次 */}
               {selectedDate === getDateString(0) && (
-                <div className="flex justify-center mt-8">
-                  {isPremium ? (
+                <div className="flex flex-col items-center gap-2 mt-8">
+                  {!isPremium && (
+                    <span className="text-xs text-neutral-500">
+                      今日剩余 {getRemainingRefreshes('personal-news')} 次
+                    </span>
+                  )}
+                  {canRefresh('personal-news', isPremium) ? (
                     <button
                       onClick={async () => {
                         trackClick('获取更多专属资讯', 'personal-news');
+                        if (!isPremium) {
+                          incrementRefreshCount('personal-news');
+                          forceUpdate(n => n + 1);
+                        }
                         if (onRefreshNews) {
                           setLoadingNews(true);
                           try {
@@ -482,11 +527,22 @@ const ExplorePage: React.FC<ExplorePageProps> = ({
 
       {activeTab === 'tools' && (
         <div className="space-y-4">
-          {/* 刷新按钮 - 仅专业版可用 */}
-          <div className="flex justify-end">
-            {isPremium ? (
+          {/* 刷新按钮 - 免费用户每天3次，专业版无限 */}
+          <div className="flex justify-end items-center gap-3">
+            {!isPremium && (
+              <span className="text-xs text-neutral-500">
+                今日剩余 {getRemainingRefreshes('tools')} 次
+              </span>
+            )}
+            {canRefresh('tools', isPremium) ? (
               <button
-                onClick={loadTools}
+                onClick={() => {
+                  if (!isPremium) {
+                    incrementRefreshCount('tools');
+                    forceUpdate(n => n + 1);
+                  }
+                  loadTools();
+                }}
                 disabled={loadingTools}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm hover:bg-green-500/20 transition-all disabled:opacity-50"
               >
@@ -569,11 +625,22 @@ const ExplorePage: React.FC<ExplorePageProps> = ({
 
       {activeTab === 'cases' && (
         <div className="space-y-4">
-          {/* 刷新按钮 - 仅专业版可用 */}
-          <div className="flex justify-end">
-            {isPremium ? (
+          {/* 刷新按钮 - 免费用户每天3次，专业版无限 */}
+          <div className="flex justify-end items-center gap-3">
+            {!isPremium && (
+              <span className="text-xs text-neutral-500">
+                今日剩余 {getRemainingRefreshes('cases')} 次
+              </span>
+            )}
+            {canRefresh('cases', isPremium) ? (
               <button
-                onClick={loadCases}
+                onClick={() => {
+                  if (!isPremium) {
+                    incrementRefreshCount('cases');
+                    forceUpdate(n => n + 1);
+                  }
+                  loadCases();
+                }}
                 disabled={loadingCases}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-400 text-sm hover:bg-purple-500/20 transition-all disabled:opacity-50"
               >
