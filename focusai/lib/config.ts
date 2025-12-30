@@ -1,16 +1,13 @@
 ﻿/**
  * 聚智 AI - 前端配置
- * 
- * 本地开发：使用 .env.local 或默认值
- * 生产部署：使用相对路径
  */
 
 // API 后端地址 - 生产环境使用相对路径
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-// Supabase 配置
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://eyqnsyxhkbhlloqmvncc.supabase.co';
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5cW5zeXhoa2JobGxvcW12bmNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MjA5MDMsImV4cCI6MjA4MDM5NjkwM30.7hAE_l73MeV_O1bdqGrV2muMtACnmoehN1PmHUX32Hg';
+// Authing 配置
+export const AUTHING_APP_ID = import.meta.env.VITE_AUTHING_APP_ID || '69532150a58bf4588ced65ad';
+export const AUTHING_HOST = import.meta.env.VITE_AUTHING_HOST || 'https://egrhb81sftwx-demo.authing.cn';
 
 // 应用信息
 export const APP_NAME = '聚智 AI';

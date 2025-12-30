@@ -17,8 +17,7 @@ import { ViewState, NewsItem, UserSettings } from './types';
 import { MOCK_NEWS } from './constants';
 import { Bookmark, Inbox, Loader2, Newspaper, Wrench, Lightbulb, ExternalLink, Star, Trash2 } from 'lucide-react';
 
-import { auth } from './lib/supabase';
-import type { User } from '@supabase/supabase-js';
+import { auth } from './lib/authing';
 import { trackPageView, trackClick, trackAction, getUserId } from './lib/analytics';
 import { API_BASE_URL } from './lib/config';
 
@@ -54,7 +53,7 @@ const App: React.FC = () => {
     }
     return { profession: '职场人士' };
   });
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [isPremium, setIsPremium] = useState(false);
 
   // 监听登录状态

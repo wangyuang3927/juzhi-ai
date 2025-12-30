@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Check, X, QrCode, MessageCircle, Mail } from 'lucide-react';
 import { ViewState } from '../types';
-import type { User } from '@supabase/supabase-js';
+// User type for authentication
 
 interface PricingPageProps {
   onNavigate?: (view: ViewState) => void;
-  user?: User | null;
+  user?: any;
 }
 
 const plans = [

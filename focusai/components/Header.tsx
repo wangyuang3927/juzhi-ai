@@ -1,13 +1,12 @@
 import React from 'react';
 import { LayoutGrid, Bookmark, Settings, Sparkles, Menu, X, LogOut, User, Compass } from 'lucide-react';
 import { ViewState } from '../types';
-import { auth } from '../lib/supabase';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { auth } from '../lib/authing';
 
 interface HeaderProps {
   currentView: ViewState;
   onNavigate: (view: ViewState) => void;
-  user?: SupabaseUser | null;
+  user?: any;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, user }) => {

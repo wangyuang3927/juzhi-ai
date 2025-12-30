@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ViewState } from '../types';
 import { ArrowRight, Loader2, AlertCircle, CheckCircle, Briefcase, Gift } from 'lucide-react';
-import { auth } from '../lib/supabase';
+import { auth } from '../lib/authing';
 import { API_BASE_URL } from '../lib/config';
 
 interface AuthPageProps {
