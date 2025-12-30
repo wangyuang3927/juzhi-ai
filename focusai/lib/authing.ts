@@ -77,11 +77,14 @@ export const auth = {
 
   signIn: async (email: string, password: string): Promise<AuthResponse> => {
     try {
-      const result = await authingRequest('signin', {
+      const result = await authingRequest('signin-by-credentials', {
         connection: 'PASSWORD',
         passwordPayload: {
           account: email,
           password: password,
+        },
+        options: {
+          scope: 'openid profile email',
         },
       });
       if (result.statusCode === 200 && result.data) {
@@ -93,7 +96,7 @@ export const auth = {
         storeUser(user);
         return { data: user };
       }
-      return { error: { message: result.message || '登录失败' } };
+      return { error: { message: result.message || '账号或密码错误' } };
     } catch (err: any) {
       return { error: { message: err.message || '网络错误' } };
     }
