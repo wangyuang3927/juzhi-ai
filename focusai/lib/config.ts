@@ -1,12 +1,12 @@
-/**
+﻿/**
  * 聚智 AI - 前端配置
  * 
  * 本地开发：使用 .env.local 或默认值
- * 生产部署：Vercel 会自动注入环境变量
+ * 生产部署：使用相对路径
  */
 
-// API 后端地址
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// API 后端地址 - 生产环境使用相对路径
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Supabase 配置
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://eyqnsyxhkbhlloqmvncc.supabase.co';
@@ -14,4 +14,3 @@ export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJh
 
 // 应用信息
 export const APP_NAME = '聚智 AI';
-export const APP_VERSION = '1.0.0';
