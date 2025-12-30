@@ -253,6 +253,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ type, onNavigate, onLogin, onUpdate
           </button>
         </div>
 
+        {isLogin && (
+          <div className="mt-3 text-center">
+            <a 
+              href="https://egrhb81sftwx-demo.authing.cn/u"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-neutral-500 hover:text-neutral-400"
+            >
+              忘记密码?
+            </a>
+          </div>
+        )}
+
       </div>
     </div>
   );
