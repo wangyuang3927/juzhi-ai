@@ -55,14 +55,16 @@ export const auth = {
     try {
       const result = await authingRequest('signup', {
         connection: 'PASSWORD',
-        passwordEncryptType: 'none',
-        profile: { email, password },
+        passwordPayload: {
+          email: email,
+          password: password,
+        },
       });
       if (result.statusCode === 200 && result.data) {
         const user: AuthUser = {
           id: result.data.userId || result.data.id,
           email: email,
-          token: result.data.access_token || '',
+          token: result.data.access_token || result.data.token || '',
         };
         storeUser(user);
         return { data: user };
@@ -77,14 +79,16 @@ export const auth = {
     try {
       const result = await authingRequest('signin', {
         connection: 'PASSWORD',
-        passwordEncryptType: 'none',
-        singleRecognition: { account: email, password },
+        passwordPayload: {
+          account: email,
+          password: password,
+        },
       });
       if (result.statusCode === 200 && result.data) {
         const user: AuthUser = {
-          id: result.data.user_id || result.data.sub,
+          id: result.data.user_id || result.data.sub || result.data.userId,
           email: email,
-          token: result.data.access_token || '',
+          token: result.data.access_token || result.data.token || '',
         };
         storeUser(user);
         return { data: user };
