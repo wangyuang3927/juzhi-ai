@@ -77,16 +77,14 @@ export const auth = {
 
   signIn: async (email: string, password: string): Promise<AuthResponse> => {
     try {
-      const result = await authingRequest('signin-by-credentials', {
+      const result = await authingRequest('signin', {
         connection: 'PASSWORD',
         passwordPayload: {
           account: email,
           password: password,
         },
-        options: {
-          scope: 'openid profile email',
-        },
       });
+      console.log('Authing signin response:', result);
       if (result.statusCode === 200 && result.data) {
         const user: AuthUser = {
           id: result.data.user_id || result.data.sub || result.data.userId,
